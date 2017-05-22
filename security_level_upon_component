@@ -1,0 +1,12 @@
+from com.atlassian.jira.component import ComponentAccessor
+
+componentManager = ComponentAccessor.getProjectComponentManager()
+
+component1 = componentManager.find(componentID)			#getting components for comparison
+component2 = componentManager.find(componentID)
+issueComponents = issue.getComponents()
+
+if issueComponents.contains(component1):			#defyning security level
+	issue.setSecurityLevelId(levelID)
+elif issueComponents.contains(component2):
+	issue.setSecurityLevelId(levelID)
