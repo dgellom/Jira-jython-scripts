@@ -1,0 +1,85 @@
+# this script was used to create a new issue for HR project when a new employee was found in reruiting Jira project.
+#Script uses custom fields that are filled out on a custom screen during workflow transition.
+
+from com.atlassian.jira.component import ComponentAccessor
+
+issueService = ComponentAccessor.getIssueService()		                                   	#getting components
+issueManager = ComponentAccessor.getIssueManager()
+projectManager = ComponentAccessor.getProjectManager()
+userManager = ComponentAccessor.getUserManager()
+commentManager = ComponentAccessor.getCommentManager()
+customFieldManager = ComponentAccessor.getCustomFieldManager() 
+linkManager = ComponentAccessor.getIssueLinkManager()
+componentManager = ComponentAccessor.getProjectComponentManager()
+context = ComponentAccessor.getJiraAuthenticationContext()
+
+currentUserObj = context.getLoggedInUser()		                                          	#person creating new issue
+currentUserName = currentUserObj.getKey()
+
+project = ProjectID			                                                              	#indicating the project for new issue and getting it's lead
+projectObj = projectManager.getProjectObj(project)
+projectLeadObj = projectObj.getProjectLead()
+projectLead = projectLeadObj.getKey()
+
+issueId = issue.getId()			                                                                #retrieving last comment to use as a description.
+issueObj = issueManager.getIssueObject(issueId)
+lastComment = commentManager.getLastComment(issueObj)
+commentBody = lastComment.getBody()
+
+namefieldObj = customFieldManager.getCustomFieldObject("customfield_ID")				#getting new workers name from field
+namevalue = namefieldObj.getValue(issueObj)
+nameString = namefieldObj.getCustomFieldType().getStringFromSingularObject(namevalue)
+
+offersNumObj = customFieldManager.getCustomFieldObject("customfield_ID")				#updating number of accepted offers
+offersNumValue = offersNumObj.getValue(issueObj)
+if not (offersNumObj.hasValue(issueObj)):
+	offersNumValue = "0"
+newNum = (int(offersNumValue) + 1)
+updatedNum = offersNumObj.createValue(issueObj, str(newNum))
+
+listOfNamesFieldObj = customFieldManager.getCustomFieldObject("customfield_ID")		            	 #updating new workers list of names
+listOfNamesValue = listOfNamesFieldObj.getValue(issueObj)
+listString = listOfNamesFieldObj.getCustomFieldType().getStringFromSingularObject(listOfNamesValue)
+newValue = (listString + str(newNum) + ". " + nameString + "\n")
+updatedList = listOfNamesFieldObj.createValue(issueObj, newValue)
+
+phonefieldObj = customFieldManager.getCustomFieldObject("customfield_ID")				#getting new workers phone number from field
+phonevalue = phonefieldObj.getValue(issueObj)
+
+mailfieldObj = customFieldManager.getCustomFieldObject("customfield_ID")				#getting new workers email from field
+mailvalue = mailfieldObj.getValue(issueObj)
+
+datefieldObj = customFieldManager.getCustomFieldObject("customfield_ID")				#getting first work date from field
+datevalueObj = datefieldObj.getValue(issueObj)
+datevalue = datefieldObj.getCustomFieldType().getStringFromSingularObject(datevalueObj)
+
+namefieldObj.createValue(issueObj, "")	                                                        	#clearing name, phone and e-mail fields
+phonefieldObj.createValue(issueObj, "")
+mailfieldObj.createValue(issueObj, "")
+issue.store()
+
+component1 = componentManager.find(ID)  	                                                  	#getting components for comparison
+component2 = componentManager.find(ID)
+issueComponents = componentManager.findComponentsByIssue(issueObj)
+
+if issueComponents.contains(component1):			                                        #defyning the assignee
+	assignee = "assignee_KEY"
+elif issueComponents.contains(component2):
+	assignee = "assignee_KEY"
+else : assignee = projectLead
+
+param = issueService.newIssueInputParameters()		                                        	#setting parameters for new isssue
+param.setProjectId(project)
+param.setReporterId(currentUserName) 
+param.setAssigneeId(assignee)
+param.setIssueTypeId("ID")
+param.setSummary("Offer accepted by " + namevalue)
+param.setDescription(namevalue + " starts on " + datevalue + "\n" + "Phone number: " + phonevalue + "\n" + "Email address: " + mailvalue + "\n" + "\n" + commentBody)
+
+validation = issueService.validateCreate(currentUserObj, param)			                    	#creating new issue
+createResult = issueService.create(currentUserObj, validation)
+
+newIssue = createResult.getIssue()		                                                        #getting new issue object
+newIssueId = newIssue.getId()
+
+linkManager.createIssueLink(issueId, newIssueId, Link_type_ID, Sequence_ID, currentUserObj)		#linking two issues
